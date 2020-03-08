@@ -10,8 +10,7 @@ Ockam Proposals are design documents that would be openly discussed by the Ockam
 before a feature is implemented. A proposal describes the motivation for a feature along with
 a technical specification for how it could be implemented within Ockam.
 
-## Description
-
+The first step in creating a proposal is to create an [issue] (https://github.com/ockam-network/proposals/issues) that describes the problem you would like addressed through a proposal. Once the issue has been discussed, it can then be turned into a proposal.
 
 ## Discussion
 
