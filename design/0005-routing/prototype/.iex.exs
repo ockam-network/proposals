@@ -1,1 +1,1 @@
-c "./prototype1.exs"
+c "./prototype.exs"
