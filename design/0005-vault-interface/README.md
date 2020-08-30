@@ -9,14 +9,14 @@ status: Draft
 This document specifies the vault interface design
 
 The interface can be looked in two pieces, the vault interface functions and vault interface secrets. The secrets can
-hold a variety of keys such as elliptic curve private and public keys, shared secrets and AES keys. The vault interface 
+hold a variety of keys such as elliptic curve private and public keys, shared secrets and AES keys. The vault interface
 functions perform a number of cryptographic operations, sometimes using the vault interface secrets.
 
 ## Description
 
 ### Vault Interface Functions
 
-```
+```c
 /**
  * @brief   Generate a random number of desired size.
  * @param   vault[in]       Vault object to use for random number generation.
@@ -127,7 +127,7 @@ ockam_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
 
 ### Vault Interface Secrets
 
-```
+```c
 /**
  * @brief   Generate an ockam secret. Attributes struct must specify the configuration for the type of secret to
  *          generate. For EC keys and AES keys, length is ignored.
@@ -220,4 +220,3 @@ We’re discussing the Ockam vault interface in the following Github issue:
 ## References
 
 See the discussion.
-
