@@ -51,9 +51,10 @@ Channel's are named according to what options they contain.
 
 This proposal has the following recommended channel setups:
 
-1- **Ephemeral channel** runs [key agreement](../0003-key-agreement-xx) everytime it is created. All keys and hashes are forgotten
+    
+1. **Ephemeral channel** runs [key agreement](../0003-key-agreement-xx) everytime it is created. All keys and hashes are forgotten
 when the channel is closed.
-2- **Standard channel** runs [key agreement](../0003-key-agreement-xx) after a fixed amount of messages have been received to avoid
+2. **Standard channel** runs [key agreement](../0003-key-agreement-xx) after a fixed amount of messages have been received to avoid
 nonce reuse.
 
 ## Structure
