@@ -99,7 +99,7 @@ Body is encrypted with the calculated *SK* from X3DH, the AD is the value of **H
 - IK<sub>B</sub>
 - XEdDSA(IK<sub>B</sub>, EIK<sub>B</sub>)
 
-EK<sub>B</sub> serves as the nonce and Hash(EIK<sub>B</sub>) serves as the message id.
+EK<sub>B</sub> serves as the nonce (or the first N bytes depending on the encryption IV size) and Hash(EIK<sub>B</sub>) serves as the message id.
 
 The message is sent to the service.
 
