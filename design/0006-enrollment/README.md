@@ -46,7 +46,9 @@ The bundle also contains an Ockam address *Addr* an enrollee uses to indicate a 
 
 The process uses the following parameters:
 
-||**Name**||**Definition**||
+
+| **Name** | **Definition** |
+| ---------| --------------- |
 | *curve* | X25519 |
 | *hash* | A 256 bit hash function (e.g. SHA-256 or SHA3-256) |
 | *info* | An ASCII string with the protocol name |
