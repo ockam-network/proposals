@@ -118,6 +118,8 @@ This serves as the long term identity key of the enrollee.
 
 The service can continue to use SK to communicate with the enrollee until SK is rotated.
 
+The internal state hash for subsequent noise channels **h** = HMAC(SK, *info*)
+
 ## Reference
 
 1. <span id="reference-3"></span>Marlinspike, M. and Perrin, T.,
