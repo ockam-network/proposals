@@ -54,7 +54,7 @@ The process uses the following parameters:
 | *info* | An ASCII string with the protocol name |
 | *KDF* | HKDF with 32 0xFF bytes prepended to *IKM*, with *info* parameter and *salt* is 32 0x00 bytes |
 | *HMAC* | HMAC-SHA256 |
-| *XEdDSA | [XEdDSA](https://signal.org/docs/specifications/xeddsa/) signature |
+| *XEdDSA* | [XEdDSA](https://signal.org/docs/specifications/xeddsa/) signature |
 | *AEAD* | Authenticated encryption scheme like AES-256-GCM |
 | \|\| | Concatenation of byte sequences |
 
@@ -84,6 +84,8 @@ The enrollee calculates the X3DH key agreement as follows:
 *DH1* and *DH2* provide mutual authentication. *DH3* and *DH4* provide forward secrecy.
 After calculating *SK*, the enrollee deletes the private key for EK<sub>B</sub> and DH outputs.
 
+The enrollee calculates the state hash **h** = hash(hash(SK) || hash(*info*))
+
 The enrollee then generates a keypair *IK<sub>B</sub>*. This key becomes the identity key for the enrollee.
 
 The enrollee sends a message to the service to indicate enrollment that includes the following:
@@ -94,7 +96,7 @@ The enrollee sends a message to the service to indicate enrollment that includes
 - Hash(EIK<sub>B</sub>)
 
 **Body**
-Body is encrypted with the calculated *SK* from X3DH, the AD is the value of **Header** || *info* || *Addr*
+Body is encrypted with the calculated *SK* from X3DH, the AAD is the value of **Header** || *info* || *Addr* || state hash **h**
 
 - IK<sub>B</sub>
 - XEdDSA(IK<sub>B</sub>, EIK<sub>B</sub>)
@@ -118,10 +120,11 @@ This serves as the long term identity key of the enrollee.
 
 The service can continue to use SK to communicate with the enrollee until SK is rotated.
 
-The internal state hash for subsequent noise channels **h** = HMAC(SK, *info*)
+
 
 ## Reference
 
 1. <span id="reference-3"></span>Marlinspike, M. and Perrin, T.,
 The X3DH Key Agreement Protocol. <br/>
 https://signal.org/docs/specifications/x3dh/x3dh.pdf
+
