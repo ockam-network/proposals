@@ -84,7 +84,7 @@ The enrollee calculates the X3DH key agreement as follows:
 *DH1* and *DH2* provide mutual authentication. *DH3* and *DH4* provide forward secrecy.
 After calculating *SK*, the enrollee deletes the private key for EK<sub>B</sub> and DH outputs.
 
-The enrollee calculates the state hash **h** = hash(hash(SK) || hash(*info*))
+The enrollee calculates the state hash **h** = hash(*info* || [0xFF; 32] || DH1 || DH2 || DH3 || DH4)
 
 The enrollee then generates a keypair *IK<sub>B</sub>*. This key becomes the identity key for the enrollee.
 
@@ -120,7 +120,21 @@ This serves as the long term identity key of the enrollee.
 
 The service can continue to use SK to communicate with the enrollee until SK is rotated.
 
+# Threat Model
 
+The following are the various parts of the threat model:
+
+- Protecting against external threats by using to standard cryptography to provide confidentiality, integrity, accountability, authentication 
+- Protecting against passive attackers that may be listening to network traffic and active attackers tampering with network traffic by using AES-GCM
+- Protecting against replay enrollments by using nonces and ephemeral keys
+
+
+The following are not parts of the Vault threat model:
+
+- Protecting against a malicious enroller that changes or alters the service's prekey bundle or the identity key of the enrollee.
+- Protecting keys on the enrollee, enroller, and service more than the guarantees provided by the Vault. 
+- Protecting against memory fault attacks
+- Protecting against physical side channel attacks like voltage differential attacks.
 
 ## Reference
 
