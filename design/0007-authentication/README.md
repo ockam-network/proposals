@@ -55,8 +55,23 @@ the *issuer* in order to trust the information presented in the credential.
 How trust is established in the issuers is similar to how it is with a holder. This begs the question,
 how is the root of trust established i.e. how is trust established in the first issuers if there are none?
 
-The answer lies with the framework or system. 
+The answer lies with the trust domain or system. These can be defined through standards or groups. HIPAA, PCI are standards that define how trust can be established for an entity that works in health records and credit cards.
 
+The FDA regulates prescription drugs and provides the GS1 validation scheme for establishing trust in drug pedigree.
+
+In the space of IoT, this is largely defined on where and howthe devices themselves will be used.
+
+## Prior Art
+
+Authentication centers around correctly identifying parties. Here we discuss the existing methods of identification and authentication.
+
+### One off identity and trust
+
+### PKI
+
+### Federated identity and Single-Sign-On
+
+### Self Sovereign Identity
 
 ## Definition
 
@@ -66,3 +81,20 @@ The answer lies with the framework or system.
 
 ## Reference
 
+[Handshake.org](https://handshake.org/)
+[Namecoin](https://www.namecoin.org/)
+[Secure Scuttlebutt](https://scuttlebutt.nz/docs/)
+[OWASP Top 10 Broken Authentication](https://owasp.org/www-project-top-ten/2017/A2_2017-Broken_Authentication)
+[Forgot Password](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html)
+[NIST 800-63b](https://pages.nist.gov/800-63-3/sp800-63b.html#memsecret)
+[Microsoft Windows Defender Credential Guard](https://docs.microsoft.com/en-us/windows/security/identity-protection/credential-guard/credential-guard-manage)
+[OpenID Connect](https://openid.net/connect/)
+[Federated Identity and Single SignOn](https://www.okta.com/identity-101/federated-identity-vs-sso/)
+[SAML](http://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0.html)
+[SAML Bypass Vulnerability](https://security.paloaltonetworks.com/CVE-2020-2021)
+[OAuth](https://oauth.net/2/)
+[Decentralized Identifiers](https://www.w3.org/TR/did-core/)
+[Verifiable Credentials Data Model](https://www.w3.org/TR/vc-data-model/)
+[DEP](https://docs.microsoft.com/en-us/windows/win32/memory/data-execution-prevention)
+[ASLR](https://searchsecurity.techtarget.com/definition/address-space-layout-randomization-ASLR)
+[Speculative Probing: Hacking Blind in the Spectre Era](https://download.vusec.net/papers/blindside_ccs20.pdf)
