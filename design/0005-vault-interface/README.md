@@ -9,70 +9,153 @@ status: Draft
 This document specifies the vault interface design
 
 The interface can be looked in two pieces, the vault interface functions and vault interface secrets. The secrets can
-hold a variety of keys such as elliptic curve private and public keys, shared secrets and AES keys. The vault interface 
+hold a variety of keys such as elliptic curve private and public keys, shared secrets, encryption and signing keys. The vault interface 
 functions perform a number of cryptographic operations, sometimes using the vault interface secrets.
 
 ## Description
 
 ### Vault Interface Functions
 
+### Rust API
+
+```rust
+/// Generate random bytes and fill them into `data`
+fn random(&mut self, data: &mut [u8]) -> Result<(), VaultFailError>;
+/// Compute the SHA-256 digest given input `data`
+fn sha256(&self, data: &[u8]) -> Result<[u8; 32], VaultFailError>;
+/// Create a new secret key
+/// Compute Elliptic-Curve Diffie-Hellman using this secret key
+/// and the specified uncompressed public key
+fn ec_diffie_hellman(
+    &mut self,
+    context: SecretKeyContext,
+    peer_public_key: PublicKey,
+) -> Result<SecretKeyContext, VaultFailError>;
+/// Compute Elliptic-Curve Diffie-Hellman using this secret key
+/// and the specified uncompressed public key and return the HKDF-SHA256
+/// output using the DH value as the HKDF ikm
+fn ec_diffie_hellman_hkdf_sha256(
+    &mut self,
+    context: SecretKeyContext,
+    peer_public_key: PublicKey,
+    salt: SecretKeyContext,
+    info: &[u8],
+    output_attributes: Vec<SecretKeyAttributes>,
+) -> Result<Vec<SecretKeyContext>, VaultFailError>;
+/// Compute the HKDF-SHA256 using the specified salt and input key material
+/// and return the output key material of the specified length
+fn hkdf_sha256(
+    &mut self,
+    salt: SecretKeyContext,
+    info: &[u8],
+    ikm: Option<SecretKeyContext>,
+    output_attributes: Vec<SecretKeyAttributes>,
+) -> Result<Vec<SecretKeyContext>, VaultFailError>;
+/// Encrypt a payload using AES-GCM
+fn aead_aes_gcm_encrypt(
+    &mut self,
+    context: SecretKeyContext,
+    plaintext: &[u8],
+    nonce: &[u8],
+    aad: &[u8],
+) -> Result<Vec<u8>, VaultFailError>;
+/// Decrypt a payload using AES-GCM
+fn aead_aes_gcm_decrypt(
+    &mut self,
+    context: SecretKeyContext,
+    cipher_text: &[u8],
+    nonce: &[u8],
+    aad: &[u8],
+) -> Result<Vec<u8>, VaultFailError>;
+/// Close and release all resources in use by the vault
+fn deinit(&mut self);
+/// Generate a signature
+fn sign(
+    &mut self,
+    secret_key: SecretKeyContext,
+    data: &[u8],
+) -> Result<[u8; 64], VaultFailError>;
+/// Verify a signature
+fn verify(
+    &mut self,
+    signature: [u8; 64],
+    public_key: PublicKey,
+    data: &[u8],
+) -> Result<(), VaultFailError>;
 ```
+
+### C API
+
+```c
+/**
+ * @brief   Initialize the specified ockam vault object
+ * @param   vault[out] The ockam vault object to initialize with the default vault.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_default_init(ockam_vault_t* vault);
+
+/**
+ * @brief   Initialize the specified ockam vault object
+ * @param   vault[out] The ockam vault object to initialize with the file vault.
+ * @param   path[in] The path to the folder for the file vault.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_file_init(ockam_vault_t* vault, const unsigned char* const path);
+
 /**
  * @brief   Generate a random number of desired size.
  * @param   vault[in]       Vault object to use for random number generation.
- * @param   buffer[out]     Buffer containing data to run through SHA-256.
- * @param   buffer_size[in] Size of the data to run through SHA-256.
+ * @param   buffer[out]     Buffer that is filled
+ * @param   buffer_size[in] Size of the data
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_random_bytes_generate(ockam_vault_t* vault, uint8_t* buffer, size_t buffer_size);
+uint32_t ockam_vault_random_bytes_generate(ockam_vault_t vault, uint8_t* buffer, size_t buffer_size);
+
 
 /**
  * @brief   Compute a SHA-256 hash based on input data.
  * @param   vault[in]           Vault object to use for SHA-256.
  * @param   input[in]           Buffer containing data to run through SHA-256.
  * @param   input_length[in]    Length of the data to run through SHA-256.
- * @param   digest[out]         Buffer to place the resulting SHA-256 hash in.
- * @param   digest_size[in]     Size of the digest buffer. Must be 32 bytes.
- * @param   digest_length[out]  Amount of data placed in the digest buffer.
+ * @param   digest[out]         Buffer to place the resulting SHA-256 hash in. Must be 32 bytes.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_sha256(ockam_vault_t* vault,
-                                 const uint8_t* input,
-                                 size_t         input_length,
-                                 uint8_t*       digest,
-                                 size_t         digest_size,
-                                 size_t*        digest_length);
+uint32_t ockam_vault_sha256(ockam_vault_t  vault,
+                            const uint8_t* input,
+                            size_t         input_length,
+                            uint8_t*       digest);
 
 /**
- * @brief   Perform an ECDH operation on the supplied ockam vault secret and peer_publickey. The result is another
- *          ockam vault secret of type unknown.
- * @param   vault[in]                 Vault object to use for encryption.
- * @param   privatekey[in]            The ockam vault secret to use for the private key of ECDH.
- * @param   peer_publickey[in]        Public key data to use for ECDH.
- * @param   peer_publickey_length[in] Length of the public key.
- * @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
- * @return  OCKAM_ERROR_NONE on success.
- */
-ockam_error_t ockam_vault_ecdh(ockam_vault_t*        vault,
-                               ockam_vault_secret_t* privatekey,
-                               const uint8_t*        peer_publickey,
-                               size_t                peer_publickey_length,
-                               ockam_vault_secret_t* shared_secret);
+* @brief   Perform an ECDH operation on the supplied ockam vault secret and peer_publickey. The result is another
+*          ockam vault secret of type unknown.
+* @param   vault[in]                 Vault object to use for encryption.
+* @param   privatekey[in]            The ockam vault secret to use for the private key of ECDH.
+* @param   peer_publickey[in]        Public key data to use for ECDH.
+* @param   peer_publickey_length[in] Length of the public key.
+* @param   shared_secret[out]        Resulting shared secret from a sucessful ECDH operation. Invalid if ECDH failed.
+* @return  OCKAM_ERROR_NONE on success.
+*/
+uint32_t ockam_vault_ecdh(ockam_vault_t         vault,
+                          ockam_vault_secret_t  privatekey,
+                          const uint8_t*        peer_publickey,
+                          size_t                peer_publickey_length,
+                          ockam_vault_secret_t* shared_secret);
 
 /**
  * @brief   Perform an HMAC-SHA256 based key derivation function on the supplied salt and input key material.
- * @param   vault[in]                 Vault object to use for encryption.
- * @param   salt[in]                  Ockam vault secret containing the salt for HKDF.
- * @param   input_key_material[in]    Ockam vault secret containing input key material to use for HKDF.
- * @param   derived_outputs_count[in] Total number of keys to generate.
- * @param   derived_outputs[out]      Array of ockam vault secrets resulting from HKDF.
+ * @param   vault[in]                      Vault object to use for encryption.
+ * @param   salt[in]                       Ockam vault secret containing the salt for HKDF.
+ * @param   input_key_material[in]         Ockam vault secret containing input key material to use for HKDF.
+ * @param   derived_outputs_attributes[in] Attibutes of output secrets.
+ * @param   derived_outputs[out]           Array of ockam vault secrets resulting from HKDF.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_hkdf_sha256(ockam_vault_t*        vault,
-                                      ockam_vault_secret_t* salt,
-                                      ockam_vault_secret_t* input_key_material,
-                                      uint8_t               derived_outputs_count,
-                                      ockam_vault_secret_t* derived_outputs);
+uint32_t ockam_vault_hkdf_sha256(ockam_vault_t                          vault,
+                                 ockam_vault_secret_t                   salt,
+                                 const ockam_vault_secret_t*            input_key_material,
+                                 const ockam_vault_secret_attributes_t* derived_outputs_attributes,
+                                 uint8_t                                derived_outputs_count,
+                                 ockam_vault_secret_t*                  derived_outputs);
 
 /**
  * @brief   Encrypt a payload using AES-GCM.
@@ -88,16 +171,16 @@ ockam_error_t ockam_vault_hkdf_sha256(ockam_vault_t*        vault,
  * @param   ciphertext_and_tag_length[out]  Amount of data placed in the ciphertext + tag buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
-                                               ockam_vault_secret_t* key,
-                                               uint16_t              nonce,
-                                               const uint8_t*        additional_data,
-                                               size_t                additional_data_length,
-                                               const uint8_t*        plaintext,
-                                               size_t                plaintext_length,
-                                               uint8_t*              ciphertext_and_tag,
-                                               size_t                ciphertext_and_tag_size,
-                                               size_t*               ciphertext_and_tag_length);
+uint32_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t        vault,
+                                          ockam_vault_secret_t key,
+                                          uint16_t             nonce,
+                                          const uint8_t*       additional_data,
+                                          size_t               additional_data_length,
+                                          const uint8_t*       plaintext,
+                                          size_t               plaintext_length,
+                                          uint8_t*             ciphertext_and_tag,
+                                          size_t               ciphertext_and_tag_size,
+                                          size_t*              ciphertext_and_tag_length);
 
 /**
  * @brief   Decrypt a payload using AES-GCM.
@@ -113,46 +196,84 @@ ockam_error_t ockam_vault_aead_aes_gcm_encrypt(ockam_vault_t*        vault,
  * @param   plaintext_length[out]         Amount of data placed in the plaintext buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t*        vault,
-                                               ockam_vault_secret_t* key,
-                                               uint16_t              nonce,
-                                               const uint8_t*        additional_data,
-                                               size_t                additional_data_length,
-                                               const uint8_t*        ciphertext_and_tag,
-                                               size_t                ciphertext_and_tag_length,
-                                               uint8_t*              plaintext,
-                                               size_t                plaintext_size,
-                                               size_t*               plaintext_length);
+uint32_t ockam_vault_aead_aes_gcm_decrypt(ockam_vault_t       vault,
+                                         ockam_vault_secret_t key,
+                                         uint16_t             nonce,
+                                         const uint8_t*       additional_data,
+                                         size_t               additional_data_length,
+                                         const uint8_t*       ciphertext_and_tag,
+                                         size_t               ciphertext_and_tag_length,
+                                         uint8_t*             plaintext,
+                                         size_t               plaintext_size,
+                                         size_t*              plaintext_length);
+
+/**
+ * @brief   Deinitialize the specified ockam vault object
+ * @param   vault[in] The ockam vault object to deinitialize.
+ * @return  OCKAM_ERROR_NONE on success.
+ */
+uint32_t ockam_vault_deinit(ockam_vault_t vault);
 ```
 
 ### Vault Interface Secrets
 
+### Rust API
+
+```rust
+fn secret_generate(
+    &mut self,
+    attributes: SecretKeyAttributes,
+) -> Result<SecretKeyContext, VaultFailError>;
+/// Import a secret key into the vault
+fn secret_import(
+    &mut self,
+    secret: &SecretKey,
+    attributes: SecretKeyAttributes,
+) -> Result<SecretKeyContext, VaultFailError>;
+/// Export a secret key from the vault
+fn secret_export(&mut self, context: SecretKeyContext) -> Result<SecretKey, VaultFailError>;
+/// Get the attributes for a secret key
+fn secret_attributes_get(
+    &mut self,
+    context: SecretKeyContext,
+) -> Result<SecretKeyAttributes, VaultFailError>;
+/// Return the associated public key given the secret key
+fn secret_public_key_get(
+    &mut self,
+    context: SecretKeyContext,
+) -> Result<PublicKey, VaultFailError>;
+/// Remove a secret key from the vault
+fn secret_destroy(&mut self, context: SecretKeyContext) -> Result<(), VaultFailError>;
 ```
+
+### C API
+
+```c
 /**
  * @brief   Generate an ockam secret. Attributes struct must specify the configuration for the type of secret to
  *          generate. For EC keys and AES keys, length is ignored.
  * @param   vault[in]       Vault object to use for generating a secret key.
- * @param   secret[out]     Pointer to an ockam secret object to be populated with the generated secret.
+ * @param   secret[out]     Pointer to an ockam secret object to be populated with a handle to the secret
  * @param   attributes[in]  Desired attribtes for the secret to be generated.
  */
-ockam_error_t ockam_vault_secret_generate(ockam_vault_t*                         vault,
-                                          ockam_vault_secret_t*                  secret,
-                                          const ockam_vault_secret_attributes_t* attributes);
+uint32_t ockam_vault_secret_generate(ockam_vault_t                   vault,
+                                     ockam_vault_secret_t*           secret,
+                                     ockam_vault_secret_attributes_t attributes);
 
 /**
  * @brief   Import the specified data into the supplied ockam vault secret.
  * @param   vault[in]         Vault object to use for generating a secret key.
  * @param   secret[out]       Pointer to an ockam secret object to be populated with input data.
- * @param   attributes[in]    Desired attribtes for the secret being imported.
+ * @param   attributes[in]    Desired attributes for the secret being imported.
  * @param   input[in]         Data to load into the supplied secret.
  * @param   input_length[in]  Length of data to load into the secret.
  */
 
-ockam_error_t ockam_vault_secret_import(ockam_vault_t*                         vault,
-                                        ockam_vault_secret_t*                  secret,
-                                        const ockam_vault_secret_attributes_t* attributes,
-                                        const uint8_t*                         input,
-                                        size_t                                 input_length);
+uint32_t ockam_vault_secret_import(ockam_vault_t                   vault,
+                                   ockam_vault_secret_t*           secret,
+                                   ockam_vault_secret_attributes_t attributes,
+                                   const uint8_t*                  input,
+                                   size_t                          input_length);
 
 /**
  * @brief   Export data from an ockam vault secret into the supplied output buffer.
@@ -163,11 +284,11 @@ ockam_error_t ockam_vault_secret_import(ockam_vault_t*                         v
  * @param   output_buffer_length[out] Amount of data placed in the output buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_secret_export(ockam_vault_t*        vault,
-                                        ockam_vault_secret_t* secret,
-                                        uint8_t*              output_buffer,
-                                        size_t                output_buffer_size,
-                                        size_t*               output_buffer_length);
+uint32_t ockam_vault_secret_export(ockam_vault_t        vault,
+                                   ockam_vault_secret_t secret,
+                                   uint8_t*             output_buffer,
+                                   size_t               output_buffer_size,
+                                   size_t*              output_buffer_length);
 
 /**
  * @brief   Retrieve the public key from an ockam vault secret.
@@ -178,30 +299,21 @@ ockam_error_t ockam_vault_secret_export(ockam_vault_t*        vault,
  * @param   output_buffer_length[out] Amount of data placed in the output buffer.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_secret_publickey_get(ockam_vault_t*        vault,
-                                               ockam_vault_secret_t* secret,
-                                               uint8_t*              output_buffer,
-                                               size_t                output_buffer_size,
-                                               size_t*               output_buffer_length);
+uint32_t ockam_vault_secret_publickey_get(ockam_vault_t        vault,
+                                          ockam_vault_secret_t secret,
+                                          uint8_t*             output_buffer,
+                                          size_t               output_buffer_size,
+                                          size_t*              output_buffer_length);
 
 /**
- * @brief   Retrive the attributes for a specified secret
+ * @brief   Retrieve the attributes for a specified secret
  * @param   vault[in]               Vault object to use for retrieving ockam vault secret attributes.
  * @param   secret[in]              Ockam vault secret to get attributes for.
  * @param   secret_attributes[out]  Pointer to the attributes for the specified secret.
  */
-ockam_error_t ockam_vault_secret_attributes_get(ockam_vault_t*                   vault,
-                                                ockam_vault_secret_t*            secret,
-                                                ockam_vault_secret_attributes_t* attributes);
-
-/**
- * @brief   Set or change the type of secret. Note: EC secrets can not be changed.
- * @param   vault[in]   Vault object to use for setting secret type.
- * @param   secret[in]  Secret to change the type.
- * @param   type[in]    Type of secret to change to.
- */
-ockam_error_t
-ockam_vault_secret_type_set(ockam_vault_t* vault, ockam_vault_secret_t* secret, ockam_vault_secret_type_t type);
+uint32_t ockam_vault_secret_attributes_get(ockam_vault_t                    vault,
+                                           uint64_t                         secret,
+                                           ockam_vault_secret_attributes_t* attributes);
 
 /**
  * @brief   Delete an ockam vault secret.
@@ -209,7 +321,8 @@ ockam_vault_secret_type_set(ockam_vault_t* vault, ockam_vault_secret_t* secret, 
  * @param   secret[in]  Ockam vault secret to delete.
  * @return  OCKAM_ERROR_NONE on success.
  */
-ockam_error_t ockam_vault_secret_destroy(ockam_vault_t* vault, ockam_vault_secret_t* secret);
+uint32_t ockam_vault_secret_destroy(ockam_vault_t vault, ockam_vault_secret_t secret);
+
 ```
 
 ## Discussion
