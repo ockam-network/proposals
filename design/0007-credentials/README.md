@@ -51,5 +51,136 @@ The issuer must decide the rules which define what process is needed in order to
 
 The issuer must decide if the credential is revocable, expires, or both. If so, how is this demonstrated to verifiers in a trustworthy method? If it expires, for how long is the credential valid? What does revocation mean? Was the device compromised, malfunctioning, or was the credential data just incorrect?
 
+## Credential Issuance messages
+
+Credential issuance is at least three steps: the issuer offers a credential to a potential holder, the holder agrees to receive it, the credential is issued. The issuer could simply issue the credential, but there would be no proof of consent by the holder, or proof of vetting by the issuer. These could be done out of band by the protocol, but it is still recommended that the holder in some fashion agree to receive the credential. Cryptographically, the issuer will want to enforce the credential offering to a unique request and limit how long the offer stands. Devices might simply choose to accept any credential they are offered.
+
+Messages should be encoded using [bare](https://baremessages.org/) to produce succinct payloads.
+
+### Credential Offer
+
+A credential offer includes a unique request number or id. This number should be not used again to avoid replay attacks and should only be valid for a specific time interval like an hour. Offers are structed like this:
+
+```
+offer_id: data<16>
+schema: optional<credential_schema>
+```
+
+It is recommended that offer\_id be at least 16 bytes but can be longer. The schema parameter is optional in that it can be used to indicate what type of credential will be signed.
+
+Credential schemas include the following information:
+
+```
+id: string,
+label: string,
+description: string,
+attributes: []credential_attribute_schema
+```
+
+Schema attributes include the following information:
+
+```
+label: string,
+description: string,
+unknown: bool,
+attribute_type: enum
+```
+
+Attribute types can be one of the following:
+
+1. Utf8 string
+1. Number
+1. Blob
+
+Unknown means the holder is allowed to have a value that is not known to the issuer signed. This process uses cryptographic blindings such that the issuer signs a blinded value that can only be unblinded by the holder. 
+
+### Credential Request
+
+A credential request is used to indicate the holder accepts the offer and indicate which offer by returning a cryptographic signature over the offer\_id. Due to various ways to indicate a cryptographic signature, the name *context* is used.
+
+```
+offer_id: data<16>
+context: type
+```
+
+*context* can be an ECDSA signature, zero-knowledge proof, or any other cryptographic method that is accepted by the protocol.
+
+Some examples are below
+
+JSON - ECDSA
+
+```json
+offer_id: [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+context: {
+    type: "ECDSA",
+    pubkey: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+    signature: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+}
+```
+
+JSON - BBS+
+```json
+offer_id: [16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+context: {
+    type: "BBS+Fragment1",
+    commitment: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    proof: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]
+}
+```
+
+## Credential Response
+
+The credential response includes all information signed by the issuer and the cryptographic signature associated with it.
+
+```
+attributes: []credential_attribute
+signature: data
+```
+
+Credential attributes contain the following data
+```
+type: u8
+value: type
+```
+
+Attribute types can be one of 5 values and each one is transformed into its cryptographic representation before being signed.
+
+1. Not Specified - The attribute is allowed to not be specified or left blank. The attribute is optional.
+1. Empty - The attribute must be specified by empty is acceptable. For example, the issuer is required to record a value but none exists for the attribute, so its indicated as empty.
+1. String - The attribute is an arbitrary length Utf8 byte string.
+1. Number - The attribute is a signed integer.
+1. Blob - The attribute is an unsigned byte sequence. Used to indicate a raw value that doesn't need to be modified before signing.
+
+## Presentation Request
+
+A presentation request is given from the verifier to a credential holder which specifies what information is required to be presented for the verifier to be satisfied.
+
+The message includes a unique presentation id to ensure the proof is not a replay from a previous interaction, the public key of the issuer that will be used to check the proof, the schema the credential should match, and which attributes must be revealed.
+
+```
+presentation_id: data<16>
+public_key: data
+schema: credential_schema
+revealed: [uint]
+```
+
+The presentation manifest can be hard coded or cached to reduce data transfers. The protocol can also be reduced to a 1-pass version if the presentation\_id is a nothing up my sleeve value like a timestamp in milliseonds or output from a verifiable random function (vrf).
+
+## Presentation
+
+A presentation contains the corresponding presentation id used to ensure the correctness of the proof, the revealed attribute values, and the cryptographic proof.
+
+```
+presentation_id: data<16>
+revealed_attributes: []credential_attribute_schema
+proof: data
+```
+
+
 ## Reference
 
+1. [BBS+](https://mattrglobal.github.io/bbs-signatures-spec/)
+1. M. Gorantla, C. Boyd, and J. Nieto. ID-based one-pass authenticated key agreement. In AISC08, pages 38 – 46. Australian Computer Society, 2008.
+1. C. Boyd and A. Mathuria. Protocols for Authentication and Key Establishment. Springer-Verlag, 2003.
+1. [RFC8235](https://tools.ietf.org/html/rfc8235)
+1. M. Belenkiy,  J. Camenisch, M. Chase, M. Kohlweiss, A. Lysyanskaya, H. Shacham. Randomizable Proofs and Delegatable Anonymous Credentials. In Springer Berlin Heidelberg, pages 108-125. Advances in Cryptology - CRYPTO 2009.
